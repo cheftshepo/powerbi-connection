@@ -1,0 +1,70 @@
+                                            Table "public.enriched_posts"
+           Column            |           Type           | Collation | Nullable |               Default               
+-----------------------------+--------------------------+-----------+----------+-------------------------------------
+ id                          | uuid                     |           | not null | uuid_generate_v4()
+ nca_post_id                 | uuid                     |           |          | 
+ raw_post_id                 | uuid                     |           |          | 
+ source                      | character varying(50)    |           | not null | 
+ platform_id                 | character varying(500)   |           |          | 
+ author                      | character varying(200)   |           |          | 
+ text                        | text                     |           | not null | 
+ en_translation              | text                     |           |          | 
+ url                         | text                     |           |          | 
+ published_at                | timestamp with time zone |           |          | 
+ ingested_at                 | timestamp with time zone |           | not null | 
+ sentiment_label             | character varying(20)    |           |          | 
+ sentiment_score             | double precision         |           |          | 
+ civic_topics                | text[]                   |           |          | 
+ intent                      | character varying(50)    |           |          | 
+ urgency_score               | double precision         |           |          | 
+ emotion                     | character varying(50)    |           |          | 
+ district_code               | character varying(10)    |           |          | 
+ district_name               | character varying(100)   |           |          | 
+ lm_name                     | character varying(100)   |           |          | 
+ town_mentioned              | character varying(100)   |           |          | 
+ geo_tier_resolved           | integer                  |           |          | 
+ geo_source                  | character varying(20)    |           |          | 
+ geo_coordinates             | jsonb                    |           |          | 
+ researcher_context          | text                     |           |          | 
+ researcher_confidence_boost | double precision         |           |          | 
+ relevance_confidence        | double precision         |           |          | 
+ escalation_flag             | boolean                  |           |          | false
+ escalation_level            | integer                  |           |          | 
+ cluster_id                  | uuid                     |           |          | 
+ response_en                 | text                     |           |          | 
+ response_af                 | text                     |           |          | 
+ response_tn                 | text                     |           |          | 
+ response_xh                 | text                     |           |          | 
+ ml_civic_topics             | jsonb                    |           |          | 
+ ml_urgency_score            | double precision         |           |          | 
+ ml_geo_entities             | jsonb                    |           |          | 
+ embedding                   | vector(1536)             |           |          | 
+ nl_query_embedding          | vector(1536)             |           |          | 
+ status                      | character varying(30)    |           |          | 'pending_review'::character varying
+ trend_week_label            | character varying(20)    |           |          | 
+ power_bi_exported_at        | timestamp with time zone |           |          | 
+ enriched_at                 | timestamp with time zone |           |          | now()
+Indexes:
+    "enriched_posts_pkey" PRIMARY KEY, btree (id)
+    "idx_enriched_civic" gin (civic_topics)
+    "idx_enriched_district" btree (district_code, ingested_at DESC)
+    "idx_enriched_embedding_ivfflat" ivfflat (embedding vector_cosine_ops) WITH (lists='100')
+    "idx_enriched_escalation" btree (escalation_flag, urgency_score DESC) WHERE escalation_flag = true
+    "idx_enriched_nl_embedding_ivfflat" ivfflat (nl_query_embedding vector_cosine_ops) WITH (lists='100')
+    "idx_enriched_sentiment" btree (sentiment_label, ingested_at DESC)
+    "idx_enriched_source" btree (source, ingested_at DESC)
+    "idx_enriched_status" btree (status, ingested_at DESC)
+    "idx_enriched_town" btree (town_mentioned, ingested_at DESC)
+    "idx_enriched_urgency" btree (urgency_score DESC) WHERE urgency_score IS NOT NULL
+    "uq_enriched_nca_post_id" UNIQUE CONSTRAINT, btree (nca_post_id)
+Check constraints:
+    "enriched_posts_escalation_level_check" CHECK (escalation_level >= 1 AND escalation_level <= 5)
+    "enriched_posts_geo_tier_resolved_check" CHECK (geo_tier_resolved = ANY (ARRAY[1, 2, 3]))
+    "enriched_posts_sentiment_label_check" CHECK (sentiment_label::text = ANY (ARRAY['positive'::character varying, 'negative'::character varying, 'neutral'::character varying]::text[]))
+    "enriched_posts_sentiment_score_check" CHECK (sentiment_score >= '-1.0'::numeric::double precision AND sentiment_score <= 1.0::double precision)
+    "enriched_posts_status_check" CHECK (status::text = ANY (ARRAY['pending_review'::character varying, 'approved'::character varying, 'dismissed'::character varying, 'escalated'::character varying]::text[]))
+    "enriched_posts_urgency_score_check" CHECK (urgency_score >= 0.0::double precision AND urgency_score <= 10.0::double precision)
+Foreign-key constraints:
+    "enriched_posts_nca_post_id_fkey" FOREIGN KEY (nca_post_id) REFERENCES nca_posts(id) ON DELETE CASCADE
+    "enriched_posts_raw_post_id_fkey" FOREIGN KEY (raw_post_id) REFERENCES raw_posts(id)
+

@@ -1,0 +1,6 @@
+pbi_pg_token.txt
+*.generated.sql
+nccip_dashboard.pbids
+config.env
+sp_creds.local.env
+pg_admin_creds.local.env
